@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Yad2 Vehicle Price Extension",
+  "version": "1.0.0",
+  "description": "Displays Yad2 weighted prices for vehicles on Bidspirit pages",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://*.bidspirit.com/*",
+    "https://*.yad2.co.il/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.bidspirit.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "View Vehicle Price"
+  }
+}

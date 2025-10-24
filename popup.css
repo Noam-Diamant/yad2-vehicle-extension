@@ -1,0 +1,275 @@
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    direction: rtl;
+    text-align: right;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.container {
+    width: 380px;
+    min-height: 500px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Header */
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    text-align: center;
+    position: relative;
+}
+
+.header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.logo {
+    font-size: 24px;
+}
+
+/* Main content */
+.main-content {
+    padding: 20px;
+    min-height: 400px;
+}
+
+/* State containers */
+.state {
+    display: none;
+    text-align: center;
+    padding: 20px 0;
+}
+
+.state.active {
+    display: block;
+}
+
+/* Loading state */
+.loading {
+    padding: 40px 20px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Error states */
+.error {
+    color: #e74c3c;
+}
+
+.error .icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.error h2 {
+    font-size: 18px;
+    margin-bottom: 10px;
+    color: #2c3e50;
+}
+
+.error p {
+    color: #7f8c8d;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+/* Success state */
+.success {
+    text-align: right;
+}
+
+.vehicle-info {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-right: 4px solid #667eea;
+}
+
+.vehicle-info h2 {
+    color: #2c3e50;
+    font-size: 16px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.vehicle-details {
+    display: grid;
+    gap: 8px;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.detail-item:last-child {
+    border-bottom: none;
+}
+
+.label {
+    font-weight: 600;
+    color: #34495e;
+    font-size: 14px;
+}
+
+/* Price section */
+.price-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.price-section h3 {
+    font-size: 16px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.price-display {
+    margin-bottom: 15px;
+}
+
+.weighted-price {
+    margin-bottom: 10px;
+}
+
+.price-label {
+    display: block;
+    font-size: 14px;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+.price-value {
+    font-size: 24px;
+    font-weight: bold;
+    display: block;
+}
+
+.range-label {
+    display: block;
+    font-size: 12px;
+    opacity: 0.8;
+    margin-bottom: 3px;
+}
+
+.range-value {
+    font-size: 14px;
+    font-weight: 500;
+    display: block;
+}
+
+.price-meta {
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.last-updated {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* Actions */
+.actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #5a6fd8;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: #ecf0f1;
+    color: #2c3e50;
+}
+
+.btn-secondary:hover {
+    background: #d5dbdb;
+    transform: translateY(-1px);
+}
+
+/* Footer */
+.footer {
+    background: #f8f9fa;
+    padding: 15px 20px;
+    text-align: center;
+    border-top: 1px solid #ecf0f1;
+}
+
+.footer p {
+    font-size: 12px;
+    color: #7f8c8d;
+}
+
+/* Responsive adjustments */
+@media (max-width: 400px) {
+    .container {
+        width: 100vw;
+        border-radius: 0;
+        min-height: 100vh;
+    }
+    
+    .actions {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+}
+
+
+
