@@ -18,6 +18,8 @@
             trimLevel: null,
             mileage: null,
             engineSize: null,
+            handsCount: null,
+            condition: null,
             price: null,
             url: window.location.href
         };
@@ -37,10 +39,23 @@
                 }
             }
 
-            // Extract vehicle number (מספר רכב) - look for license plate pattern
-            const vehicleNumberMatch = document.body.textContent.match(/(\d{3}-\d{2}-\d{3})/);
-            if (vehicleNumberMatch) {
-                vehicleData.vehicleNumber = vehicleNumberMatch[1];
+            // Extract vehicle number (מספר רכב) - look for various patterns
+            const vehicleNumberPatterns = [
+                /(\d{3}-\d{2}-\d{3})/g,  // Standard Israeli format
+                /(\d{7,8})/g,            // 7-8 digit number
+                /מספר\s*רכב[:\s]*(\d{3}-\d{2}-\d{3})/g,
+                /מספר\s*רכב[:\s]*(\d{7,8})/g,
+                /רכב\s*מספר[:\s]*(\d{3}-\d{2}-\d{3})/g,
+                /רכב\s*מספר[:\s]*(\d{7,8})/g
+            ];
+            
+            for (const pattern of vehicleNumberPatterns) {
+                const match = document.body.textContent.match(pattern);
+                if (match) {
+                    vehicleData.vehicleNumber = match[1];
+                    console.log('Found vehicle number:', vehicleData.vehicleNumber);
+                    break;
+                }
             }
 
             // Extract year (שנת יצור) - look for year in various contexts
@@ -98,6 +113,44 @@
             const trimMatch = document.body.textContent.match(/גימור[:\s]*([A-Z0-9]+)/);
             if (trimMatch) {
                 vehicleData.trimLevel = trimMatch[1];
+            }
+
+            // Extract number of hands (יד נוכחית)
+            const handsPatterns = [
+                /יד\s*נוכחית[:\s]*([ראשונה|שנייה|שלישית|רביעית|חמישית|ששית|שביעית|שמינית|תשיעית|עשירית]+)/g,
+                /([ראשונה|שנייה|שלישית|רביעית|חמישית|ששית|שביעית|שמינית|תשיעית|עשירית]+)\s*יד/g,
+                /יד\s*([1-9]|10)/g
+            ];
+            
+            for (const pattern of handsPatterns) {
+                const match = document.body.textContent.match(pattern);
+                if (match) {
+                    const handsText = match[1] || match[0];
+                    vehicleData.handsCount = parseHandsCount(handsText);
+                    if (vehicleData.handsCount) {
+                        console.log('Found hands count:', vehicleData.handsCount);
+                        break;
+                    }
+                }
+            }
+
+            // Extract vehicle condition (מצב הרכב)
+            const conditionPatterns = [
+                /מצב\s*הרכב[:\s]*([^,\n]+)/g,
+                /מצב[:\s]*([^,\n]+)/g,
+                /([מצוין|טוב|בינוני|לא טוב|רע|משופץ|מקורי]+)/g
+            ];
+            
+            for (const pattern of conditionPatterns) {
+                const match = document.body.textContent.match(pattern);
+                if (match && match[1]) {
+                    const conditionText = match[1].trim();
+                    if (isValidCondition(conditionText)) {
+                        vehicleData.condition = conditionText;
+                        console.log('Found condition:', vehicleData.condition);
+                        break;
+                    }
+                }
             }
 
             // Extract price - look for price patterns
@@ -163,6 +216,48 @@
         return vehicleData;
     }
 
+    // Parse hands count from Hebrew text
+    function parseHandsCount(handsText) {
+        if (!handsText) return null;
+        
+        const text = handsText.toString().toLowerCase().trim();
+        
+        // Hebrew ordinal numbers
+        const hebrewOrdinals = {
+            'ראשונה': 1, 'שנייה': 2, 'שלישית': 3, 'רביעית': 4, 'חמישית': 5,
+            'ששית': 6, 'שביעית': 7, 'שמינית': 8, 'תשיעית': 9, 'עשירית': 10
+        };
+        
+        // Check for Hebrew ordinals
+        for (const [hebrew, number] of Object.entries(hebrewOrdinals)) {
+            if (text.includes(hebrew)) {
+                return number;
+            }
+        }
+        
+        // Check for numeric values
+        const numericMatch = text.match(/(\d+)/);
+        if (numericMatch) {
+            const num = parseInt(numericMatch[1]);
+            return (num >= 1 && num <= 10) ? num : null;
+        }
+        
+        return null;
+    }
+
+    // Check if condition text is valid
+    function isValidCondition(conditionText) {
+        if (!conditionText) return false;
+        
+        const validConditions = [
+            'מצוין', 'מצוין מאוד', 'טוב', 'טוב מאוד', 'בינוני', 
+            'לא טוב', 'רע', 'משופץ', 'מקורי', 'חדש'
+        ];
+        
+        const text = conditionText.toLowerCase().trim();
+        return validConditions.some(condition => text.includes(condition.toLowerCase()));
+    }
+
     // Send vehicle data to background script
     function sendVehicleData() {
         if (!isBidspiritVehiclePage()) {
@@ -179,17 +274,85 @@
             timestamp: Date.now()
         });
 
-        // Send message to background script
-        chrome.runtime.sendMessage({
-            type: 'VEHICLE_DATA_EXTRACTED',
-            data: vehicleData
-        });
+        // Send message to background script with retry mechanism
+        sendMessageWithRetry(vehicleData, 0);
 
         console.log('Vehicle data sent to background script:', vehicleData);
     }
 
+    // Flag to prevent multiple extractions
+    let extractionRunning = false;
+    let extractionCompleted = false;
+    let messageSent = false;
+    let isInitialized = false;
+
+    // Send message to background with retry mechanism
+    function sendMessageWithRetry(vehicleData, retryCount) {
+        const maxRetries = 3;
+        
+        console.log(`Sending message to background script (attempt ${retryCount + 1}/${maxRetries + 1})...`);
+        
+        // First, try to wake up the background script
+        if (retryCount === 0) {
+            console.log('Attempting to wake up background script...');
+            chrome.runtime.sendMessage({ type: 'PING' }, (response) => {
+                if (chrome.runtime.lastError) {
+                    console.log('Background script not responding to ping:', chrome.runtime.lastError);
+                } else {
+                    console.log('Background script responded to ping');
+                }
+            });
+        }
+        
+        try {
+            chrome.runtime.sendMessage({
+                type: 'VEHICLE_DATA_EXTRACTED',
+                data: vehicleData
+            }, (response) => {
+                if (chrome.runtime.lastError) {
+                    console.error('Error sending message to background:', chrome.runtime.lastError);
+                    
+                    if (retryCount < maxRetries) {
+                        console.log(`Retrying in 1 second... (${retryCount + 1}/${maxRetries})`);
+                        setTimeout(() => {
+                            sendMessageWithRetry(vehicleData, retryCount + 1);
+                        }, 1000);
+                    } else {
+                        console.error('Max retries reached, giving up');
+                    }
+                } else {
+                    console.log('Message sent successfully to background');
+                    console.log('Background script response:', response);
+                }
+            });
+        } catch (error) {
+            console.error('Exception sending message to background:', error);
+            
+            if (retryCount < maxRetries) {
+                console.log(`Retrying in 1 second... (${retryCount + 1}/${maxRetries})`);
+                setTimeout(() => {
+                    sendMessageWithRetry(vehicleData, retryCount + 1);
+                }, 1000);
+            } else {
+                console.error('Max retries reached, giving up');
+            }
+        }
+    }
+
     // Run extraction when page loads
     function runExtraction() {
+        if (isInitialized) {
+            console.log('Extension already initialized, skipping...');
+            return;
+        }
+        
+        if (extractionRunning || extractionCompleted || messageSent) {
+            console.log('Extraction already running, completed, or message sent, skipping...');
+            return;
+        }
+        
+        isInitialized = true;
+        extractionRunning = true;
         console.log('=== Yad2 Extension Starting ===');
         console.log('Page URL:', window.location.href);
         console.log('Page ready state:', document.readyState);
@@ -198,6 +361,9 @@
         setTimeout(() => {
             console.log('Running vehicle data extraction...');
             sendVehicleData();
+            extractionRunning = false;
+            extractionCompleted = true;
+            messageSent = true;
         }, 2000);
     }
 
@@ -208,16 +374,40 @@
     }
 
     // Re-run extraction if page content changes (for SPA navigation)
+    // Use a debounce mechanism to prevent excessive extractions
+    let extractionTimeout = null;
+    let lastExtractionTime = 0;
+    const EXTRACTION_COOLDOWN = 5000; // 5 seconds cooldown between extractions
+    
     const observer = new MutationObserver((mutations) => {
-        let shouldReExtract = false;
-        mutations.forEach((mutation) => {
-            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                shouldReExtract = true;
-            }
+        // Only trigger if significant content was added
+        const hasSignificantChange = mutations.some(mutation => {
+            return mutation.type === 'childList' && 
+                   mutation.addedNodes.length > 0 &&
+                   Array.from(mutation.addedNodes).some(node => 
+                       node.nodeType === Node.ELEMENT_NODE && 
+                       (node.classList?.contains('lot') || node.tagName === 'TABLE')
+                   );
         });
         
-        if (shouldReExtract) {
-            setTimeout(sendVehicleData, 1000); // Delay to let content load
+        if (hasSignificantChange) {
+            const now = Date.now();
+            if (now - lastExtractionTime < EXTRACTION_COOLDOWN) {
+                console.log('Extraction cooldown active, skipping...');
+                return;
+            }
+            
+            // Clear any pending extraction
+            if (extractionTimeout) {
+                clearTimeout(extractionTimeout);
+            }
+            
+            // Schedule extraction with debounce
+            extractionTimeout = setTimeout(() => {
+                console.log('Re-extracting due to content changes...');
+                lastExtractionTime = Date.now();
+                sendVehicleData();
+            }, 2000); // Wait 2 seconds for content to stabilize
         }
     });
 

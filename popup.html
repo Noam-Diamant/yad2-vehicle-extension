@@ -9,15 +9,15 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>מחירון רכב יד2</h1>
             <div class="logo">🚗</div>
+            <h1>מחירון רכב יד2</h1>
         </header>
 
         <main class="main-content">
             <!-- Loading State -->
             <div id="loading" class="state loading">
                 <div class="spinner"></div>
-                <p>מחפש מחיר לרכב...</p>
+                <p>טוען נתוני רכב...</p>
             </div>
 
             <!-- Not on Bidspirit Page -->
@@ -25,10 +25,6 @@
                 <div class="icon">⚠️</div>
                 <h2>לא נמצא דף רכב</h2>
                 <p>התוסף עובד רק בדפי רכב באתר Bidspirit</p>
-                <div id="debug-info-not-bidspirit" style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 5px; font-size: 12px; text-align: left; direction: ltr;">
-                    <strong>Debug Info:</strong><br>
-                    <span id="debug-url-not-bidspirit">URL: -</span>
-                </div>
             </div>
 
             <!-- No Vehicle Data -->
@@ -36,15 +32,11 @@
                 <div class="icon">❌</div>
                 <h2>לא ניתן לחלץ נתוני רכב</h2>
                 <p>לא הצלחנו לזהות פרטי רכב בדף זה</p>
-                <div id="debug-info" style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 5px; font-size: 12px; text-align: left; direction: ltr;">
-                    <strong>Debug Info:</strong><br>
-                    <span id="debug-url">URL: -</span><br>
-                    <span id="debug-data">Data: -</span>
-                </div>
+                <button id="retry-btn" class="btn btn-primary">נסה שוב</button>
             </div>
 
-            <!-- Price Found -->
-            <div id="price-found" class="state success">
+            <!-- Ready State -->
+            <div id="ready" class="state ready">
                 <div class="vehicle-info">
                     <h2 id="vehicle-title">רכב לא זוהה</h2>
                     <div class="vehicle-details">
@@ -64,46 +56,28 @@
                             <span class="label">קילומטראז':</span>
                             <span id="mileage">-</span>
                         </div>
-                    </div>
-                </div>
-
-                <div class="price-section">
-                    <h3>מחירון יד2</h3>
-                    <div class="price-display">
-                        <div class="weighted-price">
-                            <span class="price-label">מחיר משוקלל:</span>
-                            <span id="weighted-price" class="price-value">-</span>
-                        </div>
-                        <div class="price-range">
-                            <span class="range-label">טווח מחירים:</span>
-                            <span id="price-range" class="range-value">-</span>
+                        <div class="detail-item">
+                            <span class="label">יד:</span>
+                            <span id="hands">-</span>
                         </div>
                     </div>
-                    <div class="price-meta">
-                        <span id="last-updated" class="last-updated">עודכן לאחרונה: -</span>
-                    </div>
                 </div>
 
-                <div class="actions">
-                    <button id="refresh-btn" class="btn btn-secondary">רענן מחיר</button>
-                    <button id="open-yad2-btn" class="btn btn-primary">פתח ביד2</button>
+                <div class="action-section">
+                    <p class="instruction">לחץ על הכפתור למטה כדי לפתוח את מחשבון יד2 ולמלא אוטומטית את פרטי הרכב</p>
+                    <button id="open-yad2-btn" class="btn btn-primary">
+                        <span class="btn-icon">🔍</span>
+                        <span>פתח מחשבון יד2</span>
+                    </button>
                 </div>
-            </div>
-
-            <!-- Error State -->
-            <div id="error" class="state error">
-                <div class="icon">⚠️</div>
-                <h2>שגיאה בחיפוש מחיר</h2>
-                <p id="error-message">אירעה שגיאה בעת חיפוש המחיר</p>
-                <button id="retry-btn" class="btn btn-primary">נסה שוב</button>
             </div>
         </main>
 
         <footer class="footer">
-            <p>נתונים מאתר יד2</p>
+            <p>נתונים מאתר יד2 • Bidspirit Extension</p>
         </footer>
     </div>
 
-    <script src="popup-minimal.js"></script>
+    <script src="popup.js"></script>
 </body>
 </html>

@@ -40,3 +40,4 @@ The extension will work perfectly without icons - Chrome will just show a defaul
 
 
 
+

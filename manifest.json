@@ -20,6 +20,11 @@
       "matches": ["https://*.bidspirit.com/*"],
       "js": ["content.js"],
       "run_at": "document_end"
+    },
+    {
+      "matches": ["https://*.yad2.co.il/*"],
+      "js": ["yad2-content.js"],
+      "run_at": "document_end"
     }
   ],
   "action": {
