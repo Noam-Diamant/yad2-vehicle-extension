@@ -39,22 +39,55 @@
                 }
             }
 
-            // Extract vehicle number (מספר רכב) - look for various patterns
-            const vehicleNumberPatterns = [
-                /(\d{3}-\d{2}-\d{3})/g,  // Standard Israeli format
-                /(\d{7,8})/g,            // 7-8 digit number
-                /מספר\s*רכב[:\s]*(\d{3}-\d{2}-\d{3})/g,
-                /מספר\s*רכב[:\s]*(\d{7,8})/g,
-                /רכב\s*מספר[:\s]*(\d{3}-\d{2}-\d{3})/g,
-                /רכב\s*מספר[:\s]*(\d{7,8})/g
-            ];
+            // Extract vehicle number (מספר רכב) - look in structured data FIRST
+            console.log('🔍 Step 1: Searching for vehicle number in tables...');
             
-            for (const pattern of vehicleNumberPatterns) {
-                const match = document.body.textContent.match(pattern);
-                if (match) {
-                    vehicleData.vehicleNumber = match[1];
-                    console.log('Found vehicle number:', vehicleData.vehicleNumber);
-                    break;
+            // First, try to find in table rows (most reliable)
+            const tables = document.querySelectorAll('table, .table, [class*="table"]');
+            for (const table of tables) {
+                const rows = table.querySelectorAll('tr, .row, [class*="row"]');
+                for (const row of rows) {
+                    const text = row.textContent || '';
+                    
+                    // Look for "מספר רכב" row
+                    if (text.includes('מספר רכב') || text.includes('מספר  רכב')) {
+                        // Try format with dashes first (XX-XXX-XX)
+                        let vehicleMatch = text.match(/(\d{2,3}-\d{2,3}-\d{2,3})/);
+                        if (vehicleMatch) {
+                            // Convert to 8-digit format by removing dashes
+                            vehicleData.vehicleNumber = vehicleMatch[1].replace(/-/g, '');
+                            console.log('✅ Found vehicle number in table row (with dashes):', vehicleMatch[1], '→', vehicleData.vehicleNumber);
+                            break;
+                        }
+                        // Try 7-8 digit format
+                        vehicleMatch = text.match(/(\d{7,8})/);
+                        if (vehicleMatch) {
+                            vehicleData.vehicleNumber = vehicleMatch[1];
+                            console.log('✅ Found vehicle number in table row (no dashes):', vehicleData.vehicleNumber);
+                            break;
+                        }
+                    }
+                }
+                if (vehicleData.vehicleNumber) break;
+            }
+            
+            // If still not found, try contextual patterns in full page text
+            if (!vehicleData.vehicleNumber) {
+                console.log('⚠️ Step 2: Not found in tables, trying contextual patterns...');
+                const contextualVehicleNumberPatterns = [
+                    /מספר\s*רכב[:\s]*(\d{2,3}-\d{2,3}-\d{2,3})/gi,
+                    /מספר\s*רכב[:\s]*(\d{7,8})/gi,
+                    /רכב\s*מספר[:\s]*(\d{2,3}-\d{2,3}-\d{2,3})/gi,
+                    /רכב\s*מספר[:\s]*(\d{7,8})/gi,
+                ];
+                
+                for (const pattern of contextualVehicleNumberPatterns) {
+                    const match = document.body.textContent.match(pattern);
+                    if (match && match[1]) {
+                        vehicleData.vehicleNumber = match[1].replace(/-/g, '');
+                        console.log('✅ Found vehicle number (contextual):', match[1], '→', vehicleData.vehicleNumber);
+                        break;
+                    }
                 }
             }
 
@@ -171,9 +204,9 @@
                 }
             }
 
-            // Try to extract from structured data if available
-            const tables = document.querySelectorAll('table, .table, [class*="table"]');
-            tables.forEach(table => {
+            // Try to extract other data from structured data if available
+            const allTables = document.querySelectorAll('table, .table, [class*="table"]');
+            allTables.forEach(table => {
                 const rows = table.querySelectorAll('tr, .row, [class*="row"]');
                 rows.forEach(row => {
                     const text = row.textContent;
@@ -197,13 +230,7 @@
                         }
                     }
                     
-                    // Look for vehicle number
-                    if (text.includes('מספר רכב') && !vehicleData.vehicleNumber) {
-                        const vehicleMatch = text.match(/(\d{3}-\d{2}-\d{3})/);
-                        if (vehicleMatch) {
-                            vehicleData.vehicleNumber = vehicleMatch[1];
-                        }
-                    }
+                    // Vehicle number is now extracted above, no need to do it here
                 });
             });
 

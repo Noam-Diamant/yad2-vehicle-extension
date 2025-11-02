@@ -483,6 +483,28 @@
                     2021: '140106',
                     2022: '140108'
                 }
+            },
+            'סקודה': {
+                'אוקטביה': {
+                    2013: '150000',
+                    2014: '150002',
+                    2015: '150004',
+                    2016: '150006',
+                    2017: '150008',
+                    2018: '150010',
+                    2019: '150012',
+                    2020: '150014',
+                    2021: '150016',
+                    2022: '150018'
+                },
+                'פאביה': {
+                    2015: '150100',
+                    2016: '150102',
+                    2017: '150104',
+                    2018: '150106',
+                    2019: '150108',
+                    2020: '150110'
+                }
             }
         };
 
@@ -494,9 +516,9 @@
             }
         }
 
-        // Default fallback - return a generic ID
-        console.log('Using default fallback sub-model ID');
-        return '110436'; // Generic fallback
+        // No fallback found - return null to open main price list page
+        console.log('No sub-model ID found for:', manufacturer, model, year);
+        return null;
     }
 
     // Fetch price from Yad2 sub-model page
@@ -1180,48 +1202,60 @@
                 return;
             }
             
-            // Get the sub-model ID from fallback database
-            const subModelId = getFallbackSubModelId(vehicleData.manufacturer, vehicleData.model, vehicleData.year);
+            // Try to find sub-model ID from dictionary first
+            let subModelId = null;
+            let targetUrl = null;
             
-            if (subModelId) {
-                const calculatorUrl = `https://www.yad2.co.il/price-list/sub-model/${subModelId}/${vehicleData.year}`;
-                console.log('Opening NEW Yad2 calculator URL:', calculatorUrl);
+            if (vehicleData.manufacturer && vehicleData.model && vehicleData.year) {
+                subModelId = getFallbackSubModelId(vehicleData.manufacturer, vehicleData.model, vehicleData.year);
                 
-                // Create a new tab with the calculator
-                const tab = await chrome.tabs.create({ 
-                    url: calculatorUrl,
-                    active: true // Open in foreground so user can see it
-                });
-                
-                yad2TabId = tab.id;
-                yad2TabOpenTimestamp = now;
-                console.log('Yad2 calculator tab opened:', tab.id);
-                
-                // Store the vehicle data so we can fill it when the page loads
-                await chrome.storage.local.set({
-                    pendingYad2Fill: {
-                        vehicleData: vehicleData,
-                        tabId: tab.id,
-                        timestamp: now
-                    }
-                });
-                
-                // Wait for the page to load, then try to fill in the parameters
-                setTimeout(() => {
-                    fillYad2Calculator(vehicleData, tab.id);
-                }, 1500); // Reduced to 1.5s for faster filling
-                
-            } else {
-                console.log('Could not find sub-model ID for:', vehicleData.manufacturer, vehicleData.model);
-                // Open main price list page
-                const tab = await chrome.tabs.create({ 
-                    url: 'https://www.yad2.co.il/price-list',
-                    active: true
-                });
-                yad2TabId = tab.id;
-                yad2TabOpenTimestamp = now;
-                console.log('Opened main price list page:', tab.id);
+                if (subModelId) {
+                    // Found in dictionary - go directly to specific model page!
+                    targetUrl = `https://www.yad2.co.il/price-list/sub-model/${subModelId}/${vehicleData.year}`;
+                    console.log('✅ Found sub-model ID in dictionary:', subModelId);
+                    console.log('🎯 Opening direct URL:', targetUrl);
+                } else {
+                    console.log('⚠️ Sub-model not found in dictionary, will try vehicle number search as fallback');
+                }
             }
+            
+            // If not found in dictionary, fall back to main price list page (vehicle number search)
+            if (!targetUrl) {
+                if (vehicleData.vehicleNumber) {
+                    targetUrl = 'https://www.yad2.co.il/price-list';
+                    console.log('📋 Fallback: Opening main price list for vehicle number search:', vehicleData.vehicleNumber);
+                } else {
+                    console.error('❌ No sub-model ID found and no vehicle number available');
+                    return;
+                }
+            }
+            
+            const tab = await chrome.tabs.create({ 
+                url: targetUrl,
+                active: true // Open in foreground so user can see it
+            });
+            
+            yad2TabId = tab.id;
+            yad2TabOpenTimestamp = now;
+            console.log('Yad2 tab opened:', tab.id, 'URL:', targetUrl);
+            
+            // Store the vehicle data so we can use it when the page loads
+            await chrome.storage.local.set({
+                pendingYad2Fill: {
+                    vehicleData: vehicleData,
+                    tabId: tab.id,
+                    timestamp: now,
+                    usedDictionary: !!subModelId,
+                    subModelId: subModelId
+                }
+            });
+            
+            // Wait for the page to load, then fill the form
+            // If we're on specific model page, just fill the form
+            // If we're on main page, trigger vehicle number search flow
+            setTimeout(() => {
+                fillYad2Calculator(vehicleData, tab.id);
+            }, subModelId ? 1000 : 1500); // Faster if going directly to model page
             
         } catch (error) {
             console.error('Error opening Yad2 calculator:', error);

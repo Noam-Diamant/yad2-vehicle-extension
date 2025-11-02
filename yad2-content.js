@@ -1,11 +1,18 @@
 // Content script for Yad2 price calculator
+console.log('🚀🚀🚀 YAD2-CONTENT.JS VERSION 1.0.2 LOADED 🚀🚀🚀');
 (function() {
     'use strict';
 
-    // Check if we're on Yad2 price calculator page
+    // Check if we're on Yad2 price calculator page (specific model)
     function isYad2PriceCalculator() {
         return window.location.hostname.includes('yad2.co.il') && 
                window.location.pathname.includes('/price-list/sub-model/');
+    }
+
+    // Check if we're on the main Yad2 price list page
+    function isYad2MainPriceList() {
+        return window.location.hostname.includes('yad2.co.il') && 
+               window.location.pathname === '/price-list';
     }
 
     // Watch for price results to appear (using MutationObserver)
@@ -127,17 +134,17 @@
             
             // Fallback to regex patterns
             if (!priceData.weightedPrice) {
-                const weightedPricePatterns = [
-                    /מחיר\s*מחירון\s*משוקלל[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)/g,
-                    /מחיר\s*משוקלל[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)/g,
-                    /Weighted\s*Price[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)/g,
-                    /₪\s*(\d{1,3}(?:,\d{3})*)\s*מחיר\s*משוקלל/g
-                ];
+            const weightedPricePatterns = [
+                /מחיר\s*מחירון\s*משוקלל[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)/g,
+                /מחיר\s*משוקלל[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)/g,
+                /Weighted\s*Price[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)/g,
+                /₪\s*(\d{1,3}(?:,\d{3})*)\s*מחיר\s*משוקלל/g
+            ];
 
-                for (const pattern of weightedPricePatterns) {
-                    const match = pageText.match(pattern);
+            for (const pattern of weightedPricePatterns) {
+                const match = pageText.match(pattern);
                     if (match && match[1]) {
-                        priceData.weightedPrice = parseInt(match[1].replace(/,/g, ''));
+                    priceData.weightedPrice = parseInt(match[1].replace(/,/g, ''));
                         console.log('Found weighted price (regex):', priceData.weightedPrice);
                         break;
                     }
@@ -160,7 +167,7 @@
                         if (minPrice > 10000 && maxPrice > minPrice && maxPrice < 1000000) {
                             priceData.priceRange = { min: minPrice, max: maxPrice };
                             console.log('✅ Found price range in element:', priceData.priceRange);
-                            break;
+                    break;
                         }
                     } else {
                         console.log('No range match in text');
@@ -174,23 +181,23 @@
             
             // Fallback to regex patterns
             if (!priceData.priceRange) {
-                const rangePatterns = [
+            const rangePatterns = [
                     /טווח[^₪]*₪?\s*(\d{1,3}(?:,\d{3})+)\s*[-–]\s*₪?\s*(\d{1,3}(?:,\d{3})+)/g,
-                    /מינימום[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)[^0-9]*מקסימום[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)/g,
-                    /מינ[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)[^0-9]*מקס[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)/g,
-                    /Min[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)[^0-9]*Max[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)/g,
+                /מינימום[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)[^0-9]*מקסימום[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)/g,
+                /מינ[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)[^0-9]*מקס[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)/g,
+                /Min[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)[^0-9]*Max[:\s]*₪?\s*(\d{1,3}(?:,\d{3})*)/g,
                     /₪\s*(\d{1,3}(?:,\d{3})*)\s*[-–]\s*₪\s*(\d{1,3}(?:,\d{3})*)/g
-                ];
+            ];
 
-                for (const pattern of rangePatterns) {
-                    const match = pageText.match(pattern);
+            for (const pattern of rangePatterns) {
+                const match = pageText.match(pattern);
                     if (match && match[1] && match[2]) {
-                        const minPrice = parseInt(match[1].replace(/,/g, ''));
-                        const maxPrice = parseInt(match[2].replace(/,/g, ''));
-                        if (minPrice > 10000 && maxPrice > minPrice && maxPrice < 1000000) {
-                            priceData.priceRange = { min: minPrice, max: maxPrice };
+                    const minPrice = parseInt(match[1].replace(/,/g, ''));
+                    const maxPrice = parseInt(match[2].replace(/,/g, ''));
+                    if (minPrice > 10000 && maxPrice > minPrice && maxPrice < 1000000) {
+                        priceData.priceRange = { min: minPrice, max: maxPrice };
                             console.log('Found price range (regex):', priceData.priceRange);
-                            break;
+                        break;
                         }
                     }
                 }
@@ -230,7 +237,7 @@
                     console.log(`✅ Found ${foundPrices.length} prices, using median: ₪${medianPrice.toLocaleString()}`);
                 }
             }
-            
+
             // If we found any price data, send it to background
             if (priceData.basePrice || priceData.weightedPrice || priceData.priceRange) {
                 console.log('📤 Sending price data to background:', {
@@ -330,21 +337,258 @@
         }
     }
 
-    // Fill the calculator with vehicle data
+    // Handle main price list page - click "דגם ספציפי" and enter vehicle number
+    function handleMainPriceListPage(vehicleData) {
+        try {
+            console.log('=== ON MAIN PRICE LIST PAGE ===');
+            console.log('Vehicle data:', vehicleData);
+            
+            // Check if we have vehicle number
+            if (!vehicleData.vehicleNumber) {
+                console.log('⚠️ No vehicle number available, cannot use specific model search');
+                return false;
+            }
+            
+            console.log('✅ Vehicle number found:', vehicleData.vehicleNumber);
+            
+            // Wait for page to load
+            setTimeout(() => {
+                clickSpecificModelButton(vehicleData.vehicleNumber);
+            }, 1000);
+            
+            return true;
+            
+        } catch (error) {
+            console.error('Error handling main price list page:', error);
+            return false;
+        }
+    }
+
+    // Click "דגם ספציפי" button and enter vehicle number
+    function clickSpecificModelButton(vehicleNumber) {
+        try {
+            console.log('🔍 Looking for "דגם ספציפי" button...');
+            
+            // Look for the "דגם ספציפי" button
+            const allButtons = document.querySelectorAll('button, a, div[role="button"], span');
+            
+            for (const button of allButtons) {
+                const buttonText = (button.textContent || button.innerText || '').trim();
+                
+                if (buttonText.includes('דגם ספציפי')) {
+                    console.log('🎯 Found "דגם ספציפי" button!');
+                    
+                    // Click the button
+                    button.click();
+                    button.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                    
+                    console.log('✅ Clicked "דגם ספציפי" button');
+                    
+                    // Wait for modal/form to appear, then fill vehicle number
+                    setTimeout(() => {
+                        fillVehicleNumberInModal(vehicleNumber);
+                    }, 500);
+                    
+                    return true;
+                }
+            }
+            
+            console.log('❌ "דגם ספציפי" button not found');
+            return false;
+            
+        } catch (error) {
+            console.error('Error clicking specific model button:', error);
+            return false;
+        }
+    }
+
+    // Fill vehicle number in the modal (user will click continue manually)
+    function fillVehicleNumberInModal(vehicleNumber) {
+        try {
+            console.log('🆕🆕🆕 NEW CODE VERSION 1.0.5 - USER MANUAL CONTINUE 🆕🆕🆕');
+            console.log('📝 Filling vehicle number in modal:', vehicleNumber);
+            
+            // Look for input field - try multiple selectors
+            const inputSelectors = [
+                'input[type="text"]',
+                'input[type="number"]',
+                'input[placeholder*="מספר"]',
+                'input[placeholder*="רכב"]',
+                'input[name*="vehicle"]',
+                'input[name*="number"]',
+                'input'
+            ];
+            
+            let inputField = null;
+            for (const selector of inputSelectors) {
+                const inputs = document.querySelectorAll(selector);
+                if (inputs.length > 0) {
+                    // Get the last visible input (modal is usually on top)
+                    for (let i = inputs.length - 1; i >= 0; i--) {
+                        if (inputs[i].offsetParent !== null) { // Check if visible
+                            inputField = inputs[i];
+                            break;
+                        }
+                    }
+                    if (inputField) break;
+                }
+            }
+            
+            if (!inputField) {
+                console.log('❌ Could not find vehicle number input field');
+                return false;
+            }
+            
+            console.log('✅ Found input field:', inputField);
+            console.log('📋 Input field details:');
+            console.log('  - placeholder:', inputField.placeholder);
+            console.log('  - name:', inputField.name);
+            console.log('  - type:', inputField.type);
+            console.log('  - id:', inputField.id);
+            console.log('Current value before fill:', inputField.value);
+            
+            // Make sure we have the number without dashes
+            const cleanNumber = vehicleNumber.toString().replace(/-/g, '');
+            console.log('🔢 Clean vehicle number (no dashes):', cleanNumber);
+            
+            // Clear the field first
+            inputField.value = '';
+            inputField.dispatchEvent(new Event('input', { bubbles: true }));
+            
+            // Focus on the input
+            inputField.focus();
+            
+            // Simulate typing each character one by one (more realistic)
+            let currentValue = '';
+            const typeChar = (index) => {
+                if (index >= cleanNumber.length) {
+                    console.log('✅ Finished typing vehicle number:', currentValue);
+                    console.log('Final input value:', inputField.value);
+                    
+                    // Dispatch final events to ensure React processes everything
+                    inputField.dispatchEvent(new Event('change', { bubbles: true }));
+                    inputField.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'Enter' }));
+                    
+                    // Blur to trigger validation
+                    inputField.blur();
+                    
+                    console.log('👤 Vehicle number filled. User should click "המשך" button manually.');
+                    console.log('⏳ Waiting for user to click and redirect to specific model page...');
+                    
+                    // DON'T click the button - let user do it
+                    // Instead, start watching for the redirect
+                    watchForRedirectToSpecificModel();
+                    
+                    return;
+                }
+                
+                currentValue += cleanNumber[index];
+                
+                // Use React-friendly way to set the value
+                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                    window.HTMLInputElement.prototype, 
+                    'value'
+                ).set;
+                nativeInputValueSetter.call(inputField, currentValue);
+                
+                // Dispatch input and keyup events after each character
+                inputField.dispatchEvent(new Event('input', { bubbles: true }));
+                inputField.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+                
+                // Type next character after a short delay
+                setTimeout(() => typeChar(index + 1), 50);
+            };
+            
+            // Start typing
+            console.log('⌨️ Starting to type vehicle number character by character...');
+            typeChar(0);
+            
+            return true;
+            
+        } catch (error) {
+            console.error('Error filling vehicle number:', error);
+            return false;
+        }
+    }
+
+    // Note: clickContinueButton function removed - user clicks manually in fallback mode
+
+    // Watch for redirect to specific model page
+    function watchForRedirectToSpecificModel() {
+        console.log('👀 Starting to watch for redirect to specific model page...');
+        
+        let checkCount = 0;
+        const maxChecks = 30; // 30 checks * 200ms = 6 seconds max
+        
+        const intervalId = setInterval(() => {
+            checkCount++;
+            
+            console.log(`🔍 Check ${checkCount}/${maxChecks} - Current URL:`, window.location.pathname);
+            
+            // Check if we've reached the specific model page
+            if (window.location.pathname.includes('/price-list/sub-model/')) {
+                console.log('🎉 Redirected to specific model page!');
+                clearInterval(intervalId);
+                
+                // Retrieve the stored vehicle data and continue with form filling
+                chrome.storage.local.get(['pendingYad2Fill'], (result) => {
+                    if (result.pendingYad2Fill && result.pendingYad2Fill.vehicleData) {
+                        console.log('📋 Retrieved vehicle data from storage, continuing with form fill');
+                        
+                        // Wait a bit for the page to fully load, then continue
+                        setTimeout(() => {
+                            console.log('On specific model page - continuing with form fill');
+                            
+                            // Click "לשקלול מחיר" to scroll to the form
+                            clickScrollToFormButton();
+                            
+                            // Then fill the form after a short delay
+                            setTimeout(() => {
+                                fillFormFields(result.pendingYad2Fill.vehicleData);
+                            }, 300);
+                        }, 1000);
+                    } else {
+                        console.log('⚠️ No vehicle data found in storage');
+                    }
+                });
+                
+            } else if (checkCount >= maxChecks) {
+                console.log('⏰ Timeout waiting for redirect to specific model page');
+                clearInterval(intervalId);
+            }
+        }, 200); // Check every 200ms
+    }
+
+    // Fill the calculator with vehicle data (for specific model page)
     function fillCalculator(vehicleData) {
         try {
             console.log('Filling Yad2 calculator with:', vehicleData);
             
-            // Wait minimal time for page to load (500ms)
-            setTimeout(() => {
-                // First, click "לשקלול מחיר" to scroll to the form
-                clickScrollToFormButton();
+            // Check if we're on the main price list page (fallback - vehicle number search)
+            if (isYad2MainPriceList()) {
+                console.log('📋 On main price list page - using vehicle number search fallback');
+                handleMainPriceListPage(vehicleData);
+                return;
+            }
+            
+            // If we're on the specific model page (from dictionary), continue with form fill
+            if (isYad2PriceCalculator()) {
+                console.log('✅ On specific model page (from dictionary) - filling form directly');
                 
-                // Then fill the form after a short delay
+                // Wait minimal time for page to load (500ms)
                 setTimeout(() => {
-                    fillFormFields(vehicleData);
-                }, 300);
-            }, 500);
+                    // First, click "לשקלול מחיר" to scroll to the form
+                    clickScrollToFormButton();
+                    
+                    // Then fill the form after a short delay
+                    setTimeout(() => {
+                        fillFormFields(vehicleData);
+                    }, 300);
+                }, 500);
+                return;
+            }
+            
+            console.log('⚠️ Not on expected Yad2 page, waiting...');
             
         } catch (error) {
             console.error('Error filling calculator:', error);
@@ -439,22 +683,22 @@
             const searchTerms = ['מספר ק"מ', 'ק"מ', 'קילומטר', 'מד אוץ', 'km', 'mileage'];
             
             for (const term of searchTerms) {
-                const allElements = document.querySelectorAll('*');
-                for (const element of allElements) {
+            const allElements = document.querySelectorAll('*');
+            for (const element of allElements) {
                     const text = element.textContent || '';
                     if (text.includes(term) && text.length < 100) { // Avoid matching large blocks
                         // Look for input in or near this element
-                        const input = element.querySelector('input[type="text"], input[type="number"]') || 
+                    const input = element.querySelector('input[type="text"], input[type="number"]') || 
                                     element.parentElement?.querySelector('input[type="text"], input[type="number"]') ||
-                                    element.closest('div')?.querySelector('input[type="text"], input[type="number"]');
-                        if (input) {
+                                element.closest('div')?.querySelector('input[type="text"], input[type="number"]');
+                    if (input) {
                             console.log(`Found mileage input near "${term}":`, input);
-                            input.value = mileage;
-                            input.dispatchEvent(new Event('input', { bubbles: true }));
-                            input.dispatchEvent(new Event('change', { bubbles: true }));
+                        input.value = mileage;
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
                             input.dispatchEvent(new Event('blur', { bubbles: true }));
                             console.log('✅ Filled mileage:', mileage);
-                            return true;
+                        return true;
                         }
                     }
                 }
@@ -521,31 +765,31 @@
             const searchTerms = ['מספר בעלים', 'בעלים', 'יד נוכחית', 'יד', 'בעלות', 'hands', 'owner'];
             
             for (const term of searchTerms) {
-                const allElements = document.querySelectorAll('*');
-                for (const element of allElements) {
+            const allElements = document.querySelectorAll('*');
+            for (const element of allElements) {
                     const text = element.textContent || '';
                     if (text.includes(term) && text.length < 100) {
                         const select = element.querySelector('select') || 
                                      element.parentElement?.querySelector('select') ||
                                      element.closest('div')?.querySelector('select');
-                        if (select) {
+                    if (select) {
                             console.log(`Found hands select near "${term}":`, select);
-                            const options = select.querySelectorAll('option');
+                        const options = select.querySelectorAll('option');
                             console.log(`Select has ${options.length} options`);
                             
-                            for (const option of options) {
+                        for (const option of options) {
                                 const optionText = option.textContent || option.value;
                                 console.log(`  Option: "${optionText}"`);
                                 
                                 if (optionText.includes(handsCount.toString()) || 
                                     optionText.includes(getHebrewHandsText(handsCount)) ||
                                     option.value === handsCount.toString()) {
-                                    option.selected = true;
+                                option.selected = true;
                                     select.value = option.value;
-                                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                                select.dispatchEvent(new Event('change', { bubbles: true }));
                                     select.dispatchEvent(new Event('blur', { bubbles: true }));
                                     console.log('✅ Filled hands count:', handsCount);
-                                    return true;
+                                return true;
                                 }
                             }
                         }

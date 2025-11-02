@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Yad2 Vehicle Price Extension",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "description": "Displays Yad2 weighted prices for vehicles on Bidspirit pages",
   "icons": {
-    "16": "icon16.png",
-    "48": "icon48.png",
-    "128": "icon128.png"
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   },
   "permissions": [
     "activeTab",
@@ -36,9 +36,9 @@
     "default_popup": "popup.html",
     "default_title": "View Vehicle Price",
     "default_icon": {
-      "16": "icon16.png",
-      "48": "icon48.png",
-      "128": "icon128.png"
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
     }
   }
 }
