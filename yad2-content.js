@@ -581,8 +581,8 @@ console.log('🚀🚀🚀 YAD2-CONTENT.JS VERSION 1.0.2 LOADED 🚀🚀🚀');
                     clickScrollToFormButton();
                     
                     // Then fill the form after a short delay
-                    setTimeout(() => {
-                        fillFormFields(vehicleData);
+            setTimeout(() => {
+                fillFormFields(vehicleData);
                     }, 300);
                 }, 500);
                 return;
