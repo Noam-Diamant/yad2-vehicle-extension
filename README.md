@@ -17,6 +17,14 @@ A fast, user-friendly Chrome extension that seamlessly integrates Yad2's price c
 - ✅ Double-click prevention to avoid multiple tabs
 - ✅ Lightning-fast performance with optimized delays
 
+### **Yad2 Listing Assist** 📰
+- ✅ Detects Yad2 vehicle posts (`/vehicles/item/*`) automatically
+- ✅ Captures ק״מ and יד from the post in real time
+- ✅ Hooks the built-in "למחירון" button and carries the data into the calculator page
+- ✅ Automatically clicks "למחירון" for you when you press "פתח מחשבון יד2" on a listing
+- ✅ Reads the page’s structured JSON state, so mileage/hand data stays accurate even if the DOM changes
+- ✅ Fast-fill mode reduces waiting time before the weighted price calculation
+
 ### **Intelligent Automation**
 - ✅ Automatically clicks "לשקלול מחיר" to scroll to form
 - ✅ Accurately fills mileage and hands count fields

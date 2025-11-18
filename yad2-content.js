@@ -3,10 +3,66 @@ console.log('🚀🚀🚀 YAD2-CONTENT.JS VERSION 1.0.2 LOADED 🚀🚀🚀');
 (function() {
     'use strict';
 
+    const LISTING_SNAPSHOT_KEY = 'yad2ListingSnapshot';
+    const LISTING_SNAPSHOT_TTL = 2 * 60 * 1000; // 2 minutes
+    let listingAutoFillTriggered = false;
+
     // Check if we're on Yad2 price calculator page (specific model)
     function isYad2PriceCalculator() {
         return window.location.hostname.includes('yad2.co.il') && 
                window.location.pathname.includes('/price-list/sub-model/');
+    }
+
+    function tryAutoFillFromListingSnapshot() {
+        if (listingAutoFillTriggered) {
+            return;
+        }
+
+        if (!isYad2PriceCalculator()) {
+            return;
+        }
+
+        chrome.storage.local.get([LISTING_SNAPSHOT_KEY, 'pendingYad2Fill'], (result) => {
+            const snapshot = result[LISTING_SNAPSHOT_KEY];
+            if (!snapshot) {
+                return;
+            }
+
+            const snapshotTime = snapshot.capturedAt || snapshot.timestamp || 0;
+            if (!snapshotTime || (Date.now() - snapshotTime) > LISTING_SNAPSHOT_TTL) {
+                chrome.storage.local.remove(LISTING_SNAPSHOT_KEY);
+                console.log('⌛ Listing snapshot expired, skipping autofill');
+                return;
+            }
+
+            const referrer = document.referrer || '';
+            const refOk = !referrer || referrer.includes('/vehicles/item/');
+            if (!refOk) {
+                console.log('Listing snapshot found but referrer mismatch, keeping for later use');
+                return;
+            }
+
+            const baseVehicleData = (result.pendingYad2Fill && result.pendingYad2Fill.vehicleData) || {};
+            const vehicleData = {
+                ...baseVehicleData,
+                mileage: snapshot.mileage ?? baseVehicleData.mileage ?? null,
+                handsCount: snapshot.handsCount ?? baseVehicleData.handsCount ?? null,
+                listingUrl: snapshot.listingUrl || baseVehicleData.listingUrl || document.referrer || null,
+                source: 'yad2_listing'
+            };
+
+            if (!vehicleData.mileage && !vehicleData.handsCount) {
+                console.log('Listing snapshot has no mileage/hands values, skipping autofill');
+                chrome.storage.local.remove(LISTING_SNAPSHOT_KEY);
+                return;
+            }
+
+            console.log('⚡ Using listing snapshot for fast calculator fill', vehicleData);
+            listingAutoFillTriggered = true;
+            fillCalculator(vehicleData, { fastMode: true, source: 'yad2_listing' });
+
+            chrome.storage.local.remove(LISTING_SNAPSHOT_KEY);
+        });
     }
 
     // Check if we're on the main Yad2 price list page
@@ -275,6 +331,8 @@ console.log('🚀🚀🚀 YAD2-CONTENT.JS VERSION 1.0.2 LOADED 🚀🚀🚀');
         
         if (isYad2PriceCalculator()) {
             console.log('On Yad2 price calculator page');
+            tryAutoFillFromListingSnapshot();
+            setTimeout(tryAutoFillFromListingSnapshot, 800);
             // Don't wait - the MutationObserver will catch price changes
             // Only extract if prices are already visible
             setTimeout(() => {
@@ -560,9 +618,11 @@ console.log('🚀🚀🚀 YAD2-CONTENT.JS VERSION 1.0.2 LOADED 🚀🚀🚀');
     }
 
     // Fill the calculator with vehicle data (for specific model page)
-    function fillCalculator(vehicleData) {
+    function fillCalculator(vehicleData, options = {}) {
         try {
             console.log('Filling Yad2 calculator with:', vehicleData);
+            const fastMode = !!options.fastMode;
+            const initialWait = fastMode ? 1000 : 1500; // Wait 1-1.5s before scrolling
             
             // Check if we're on the main price list page (fallback - vehicle number search)
             if (isYad2MainPriceList()) {
@@ -573,18 +633,22 @@ console.log('🚀🚀🚀 YAD2-CONTENT.JS VERSION 1.0.2 LOADED 🚀🚀🚀');
             
             // If we're on the specific model page (from dictionary), continue with form fill
             if (isYad2PriceCalculator()) {
-                console.log('✅ On specific model page (from dictionary) - filling form directly');
+                console.log('✅ On specific model page - filling form directly');
+                console.log(`⏳ Waiting ${initialWait}ms for user to see vehicle details...`);
                 
-                // Wait minimal time for page to load (500ms)
+                // Wait, then do ONE scroll to show the weighted price area
                 setTimeout(() => {
-                    // First, click "לשקלול מחיר" to scroll to the form
-                    clickScrollToFormButton();
+                    console.log('📜 Scrolling to weighted price section...');
+                    window.scrollBy({
+                        top: 2800,  // ADJUST THIS: scroll down to show form + weighted price result
+                        behavior: 'smooth'
+                    });
                     
-                    // Then fill the form after a short delay
-            setTimeout(() => {
-                fillFormFields(vehicleData);
-                    }, 300);
-                }, 500);
+                    // Fill form after scroll
+                    setTimeout(() => {
+                        fillFormFields(vehicleData);
+                    }, 500); // Small delay after scroll
+                }, initialWait);
                 return;
             }
             
@@ -646,8 +710,9 @@ console.log('🚀🚀🚀 YAD2-CONTENT.JS VERSION 1.0.2 LOADED 🚀🚀🚀');
             console.log('Mileage filled:', mileageFilled);
             console.log('Hands filled:', handsFilled);
             
-            // Try to trigger the calculation (reduced to 500ms)
+            // Wait before triggering calculation so user can see filled form
             setTimeout(() => {
+                console.log('🔘 Triggering price calculation...');
                 const calculated = triggerCalculation();
                 if (calculated) {
                     // Wait for results to load, then extract price
@@ -656,18 +721,18 @@ console.log('🚀🚀🚀 YAD2-CONTENT.JS VERSION 1.0.2 LOADED 🚀🚀🚀');
                     // Start observing for price results (this will trigger as soon as data appears)
                     watchForPriceResults();
                     
-                    // Also try extraction after delays (fallback) - aggressive timing
+                    // Also try extraction after delays (fallback) - give time for user to see
                     setTimeout(() => {
-                        console.log('🔍 Extracting price after 1.5 seconds...');
+                        console.log('🔍 Extracting price after 2 seconds...');
                         extractPriceData();
-                    }, 1500);
+                    }, 2000);
                     
                     setTimeout(() => {
-                        console.log('🔍 Extracting price after 3 seconds...');
+                        console.log('🔍 Extracting price after 4 seconds...');
                         extractPriceData();
-                    }, 3000);
+                    }, 4000);
                 }
-            }, 500);
+            }, 1000);
             
         } catch (error) {
             console.error('Error filling form fields:', error);

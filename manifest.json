@@ -26,6 +26,11 @@
       "run_at": "document_end"
     },
     {
+      "matches": ["https://www.yad2.co.il/vehicles/item/*"],
+      "js": ["yad2-post-content.js"],
+      "run_at": "document_idle"
+    },
+    {
       "matches": ["https://*.yad2.co.il/*"],
       "js": ["yad2-content.js"],
       "run_at": "document_end"

@@ -22,60 +22,118 @@
         retryBtn: document.getElementById('retry-btn')
     };
 
-    // Current vehicle data
+    const CONTEXTS = {
+        BIDSPIRIT: 'bidspirit',
+        YAD2_LISTING: 'yad2_listing'
+    };
+
+    // Current state
     let currentVehicleData = null;
     let isOpening = false; // Prevent double-clicks
+    let currentTab = null;
+    let currentContext = null;
 
     // Initialize popup
     async function init() {
         showState('loading');
         
         try {
-            // Get current tab
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            
-            // Check if we're on a Bidspirit page
-            if (!tab.url.includes('bidspirit.com') || !tab.url.includes('/ui/lotPage/')) {
-                showState('not-bidspirit');
+            currentTab = tab;
+
+            if (!tab || !tab.url) {
+                showState('no-data');
                 return;
             }
 
-            // Get stored vehicle data
+            if (isBidspiritTab(tab)) {
+                currentContext = CONTEXTS.BIDSPIRIT;
+                await loadBidspiritVehicleData(tab);
+                return;
+            }
+
+            if (isYad2ListingTab(tab)) {
+                currentContext = CONTEXTS.YAD2_LISTING;
+                await loadYad2ListingData(tab);
+                return;
+            }
+
+            currentContext = null;
+            showState('not-bidspirit');
+
+        } catch (error) {
+            console.error('Error initializing popup:', error);
+            showState('no-data');
+        }
+    }
+
+    function isBidspiritTab(tab) {
+        if (!tab?.url) return false;
+        return tab.url.includes('bidspirit.com') && tab.url.includes('/ui/lotPage/');
+    }
+
+    function isYad2ListingTab(tab) {
+        if (!tab?.url) return false;
+        return tab.url.includes('yad2.co.il') && tab.url.includes('/vehicles/item/');
+    }
+
+    async function loadBidspiritVehicleData(tab) {
+        try {
             const result = await chrome.storage.local.get(['currentVehicleData']);
             
             console.log('Popup: Retrieved data from storage:', result);
             
             if (!result.currentVehicleData || !hasRequiredData(result.currentVehicleData)) {
-                console.log('Popup: No vehicle data found, requesting from content script...');
+                console.log('Popup: No vehicle data found, requesting from Bidspirit content script...');
                 
-                // Request fresh data from content script
                 await requestVehicleData(tab.id);
-                
-                // Wait a bit for content script to respond
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
-                // Try to get updated data
                 const updatedResult = await chrome.storage.local.get(['currentVehicleData']);
                 console.log('Popup: Updated data after request:', updatedResult);
                 
                 currentVehicleData = updatedResult.currentVehicleData;
             } else {
                 currentVehicleData = result.currentVehicleData;
-                console.log('Popup: Using cached data:', currentVehicleData);
+                console.log('Popup: Using cached Bidspirit data:', currentVehicleData);
             }
 
-            // Check if we have vehicle data
             if (!currentVehicleData || !hasRequiredData(currentVehicleData)) {
-                console.log('No vehicle data found or insufficient data:', currentVehicleData);
+                console.log('No Bidspirit data found or insufficient data:', currentVehicleData);
                 showState('no-data');
                 return;
             }
 
-            console.log('Vehicle data found:', currentVehicleData);
+            displayVehicleInfo();
+        } catch (error) {
+            console.error('Error loading Bidspirit data:', error);
+            showState('no-data');
+        }
+    }
+
+    async function loadYad2ListingData(tab) {
+        try {
+            const response = await chrome.tabs.sendMessage(tab.id, { type: 'REQUEST_LISTING_DATA' });
+            console.log('Popup: Listing data response', response);
+
+            const listingData = response?.data || null;
+            if (!listingData) {
+                showState('no-data');
+                return;
+            }
+
+            currentVehicleData = normalizeListingVehicleData(listingData);
+
+            if (!currentVehicleData || !hasRequiredData(currentVehicleData)) {
+                console.log('Listing data missing required fields:', currentVehicleData);
+                showState('no-data');
+                return;
+            }
+
             displayVehicleInfo();
 
         } catch (error) {
-            console.error('Error initializing popup:', error);
+            console.error('Error loading Yad2 listing data:', error);
             showState('no-data');
         }
     }
@@ -98,6 +156,60 @@
     // Check if vehicle data has required information
     function hasRequiredData(data) {
         return data && (data.vehicleNumber || (data.manufacturer && data.model && data.year));
+    }
+
+    function normalizeListingVehicleData(data) {
+        if (!data) {
+            return null;
+        }
+
+        const hands = data.handsCount || parseHandsFromText(data.handText);
+
+        return {
+            manufacturer: data.manufacturer || 'לא זוהה',
+            model: data.model || data.listingTitle || '',
+            year: data.year || null,
+            mileage: data.mileage || null,
+            handsCount: hands || null,
+            handText: data.handText || null,
+            source: data.source || 'yad2_listing'
+        };
+    }
+
+    function parseHandsFromText(text) {
+        if (!text) {
+            return null;
+        }
+
+        const normalized = text.toLowerCase();
+        const map = {
+            'ראשונה': 1,
+            'שנייה': 2,
+            'שניה': 2,
+            'שלישית': 3,
+            'רביעית': 4,
+            'חמישית': 5,
+            'שישית': 6,
+            'ששית': 6,
+            'שביעית': 7,
+            'שמינית': 8,
+            'תשיעית': 9,
+            'עשירית': 10
+        };
+
+        for (const [label, value] of Object.entries(map)) {
+            if (normalized.includes(label)) {
+                return value;
+            }
+        }
+
+        const numericMatch = normalized.match(/(\d+)/);
+        if (numericMatch) {
+            const value = parseInt(numericMatch[1], 10);
+            return Number.isFinite(value) ? value : null;
+        }
+
+        return null;
     }
 
     // Request vehicle data from content script
@@ -139,26 +251,41 @@
             return;
         }
 
-        // Prevent double-clicks
         if (isOpening) {
             console.log('Already opening Yad2, ignoring duplicate click');
             return;
         }
         
         isOpening = true;
+
+        if (currentContext === CONTEXTS.YAD2_LISTING && currentTab) {
+            console.log('Triggering auto "למחירון" click for listing page');
+            chrome.tabs.sendMessage(currentTab.id, { type: 'AUTO_OPEN_PRICE_PAGE' }, (response) => {
+                if (chrome.runtime.lastError) {
+                    console.error('Error auto-clicking price button:', chrome.runtime.lastError);
+                    isOpening = false;
+                    return;
+                }
+
+                console.log('Auto click response:', response);
+                isOpening = false;
+                window.close();
+            });
+            return;
+        }
+
         console.log('User clicked button! Opening Yad2 calculator for:', currentVehicleData);
         
-        // Send message to background script to open Yad2 calculator
         chrome.runtime.sendMessage({
             type: 'OPEN_YAD2_CALCULATOR',
             data: currentVehicleData
         }, (response) => {
             if (chrome.runtime.lastError) {
                 console.error('Error sending message:', chrome.runtime.lastError);
-                isOpening = false; // Reset on error
+                isOpening = false;
             } else {
                 console.log('✅ Yad2 calculator opening, response:', response);
-                // Close popup after opening Yad2
+                isOpening = false;
                 window.close();
             }
         });
