@@ -1143,8 +1143,14 @@
     // Track if we already opened a Yad2 tab
     let yad2TabOpenTimestamp = 0;
     let yad2TabId = null;
+    let yad2TabVehicleKey = null; // Track which vehicle the tab is for
     let yad2TabOpening = false; // Flag to prevent concurrent openings
     const TAB_COOLDOWN = 10000; // 10 seconds cooldown
+    
+    // Generate a unique key for a vehicle
+    function getVehicleKey(vehicleData) {
+        return `${vehicleData.manufacturer || ''}-${vehicleData.model || ''}-${vehicleData.year || ''}-${vehicleData.vehicleNumber || ''}`;
+    }
 
     // Open Yad2 calculator with vehicle parameters
     async function openYad2Calculator(vehicleData) {
@@ -1152,55 +1158,85 @@
             console.log('=== OPENING YAD2 CALCULATOR REQUEST ===');
             console.log('Vehicle data:', vehicleData);
             
+            const currentVehicleKey = getVehicleKey(vehicleData);
+            console.log('Vehicle key:', currentVehicleKey);
+            
             // Check if we're currently in the process of opening a tab
             if (yad2TabOpening) {
                 console.log('🚫 Already opening a Yad2 tab, skipping duplicate request...');
                 return;
             }
             
-            // Check if we recently opened a tab
             const now = Date.now();
-            if (yad2TabId && (now - yad2TabOpenTimestamp) < TAB_COOLDOWN) {
-                console.log('⏸️ Yad2 tab recently opened, skipping... (cooldown active)');
-                // Try to update the existing tab instead
-                try {
-                    await chrome.tabs.get(yad2TabId);
-                    console.log('Existing Yad2 tab still open, reusing it');
-                    setTimeout(() => {
-                        fillYad2Calculator(vehicleData, yad2TabId);
-                    }, 500); // Reduced to 500ms
-                    return;
-                } catch (e) {
-                    console.log('Previous tab no longer exists, will create new one');
-                    yad2TabId = null;
-                }
-            }
             
-            // Set the flag to prevent concurrent calls
-            yad2TabOpening = true;
-            
-            // Check if there's already an open Yad2 calculator tab
+            // Check if there's already an open Yad2 calculator tab for ANY vehicle
             const existingTabs = await chrome.tabs.query({ 
                 url: 'https://www.yad2.co.il/price-list/sub-model/*' 
             });
             
             if (existingTabs.length > 0) {
-                console.log('Found existing Yad2 calculator tab, reusing it');
-                yad2TabId = existingTabs[0].id;
-                yad2TabOpenTimestamp = now;
+                const existingTab = existingTabs[0];
                 
-                // Focus the existing tab
-                await chrome.tabs.update(yad2TabId, { active: true });
-                
-                // Fill the form
-                setTimeout(() => {
-                    fillYad2Calculator(vehicleData, yad2TabId);
-                }, 500); // Reduced to 500ms
-                
-                // Reset the flag
-                yad2TabOpening = false;
-                return;
+                // Check if it's for the SAME vehicle
+                if (yad2TabId === existingTab.id && yad2TabVehicleKey === currentVehicleKey) {
+                    console.log('✅ Found existing tab for SAME vehicle - switching to it');
+                    await chrome.tabs.update(existingTab.id, { active: true });
+                    await chrome.windows.update(existingTab.windowId, { focused: true });
+                    return;
+                } else {
+                    console.log('🔄 Found existing tab but for DIFFERENT vehicle - will refresh it with new data');
+                    
+                    // Update tracking
+                    yad2TabId = existingTab.id;
+                    yad2TabVehicleKey = currentVehicleKey;
+                    yad2TabOpenTimestamp = now;
+                    
+                    // Focus the existing tab
+                    await chrome.tabs.update(existingTab.id, { active: true });
+                    await chrome.windows.update(existingTab.windowId, { focused: true });
+                    
+                    // Navigate to the new vehicle's page
+                    let subModelId = null;
+                    let targetUrl = null;
+                    
+                    if (vehicleData.manufacturer && vehicleData.model && vehicleData.year) {
+                        subModelId = getFallbackSubModelId(vehicleData.manufacturer, vehicleData.model, vehicleData.year);
+                        if (subModelId) {
+                            targetUrl = `https://www.yad2.co.il/price-list/sub-model/${subModelId}/${vehicleData.year}`;
+                            console.log('🎯 Navigating to:', targetUrl);
+                        } else {
+                            targetUrl = 'https://www.yad2.co.il/price-list';
+                            console.log('📋 Navigating to main price list page');
+                        }
+                    } else {
+                        targetUrl = 'https://www.yad2.co.il/price-list';
+                    }
+                    
+                    // Update the URL
+                    await chrome.tabs.update(existingTab.id, { url: targetUrl });
+                    
+                    // Store the vehicle data
+                    await chrome.storage.local.set({
+                        pendingYad2Fill: {
+                            vehicleData: vehicleData,
+                            tabId: existingTab.id,
+                            timestamp: now,
+                            usedDictionary: !!subModelId,
+                            subModelId: subModelId
+                        }
+                    });
+                    
+                    // Fill the form after navigation
+                    setTimeout(() => {
+                        fillYad2Calculator(vehicleData, existingTab.id);
+                    }, subModelId ? 1000 : 1500);
+                    
+                    return;
+                }
             }
+            
+            // Set the flag to prevent concurrent calls
+            yad2TabOpening = true;
             
             // Try to find sub-model ID from dictionary first
             let subModelId = null;
@@ -1236,8 +1272,10 @@
             });
             
             yad2TabId = tab.id;
+            yad2TabVehicleKey = currentVehicleKey; // Track which vehicle this tab is for
             yad2TabOpenTimestamp = now;
             console.log('Yad2 tab opened:', tab.id, 'URL:', targetUrl);
+            console.log('Tracking vehicle key:', currentVehicleKey);
             
             // Store the vehicle data so we can use it when the page loads
             await chrome.storage.local.set({

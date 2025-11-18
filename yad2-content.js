@@ -596,14 +596,12 @@ console.log('🚀🚀🚀 YAD2-CONTENT.JS VERSION 1.0.2 LOADED 🚀🚀🚀');
                         // Wait a bit for the page to fully load, then continue
                         setTimeout(() => {
                             console.log('On specific model page - continuing with form fill');
+                            console.log('⏳ Waiting 1s for user to see vehicle details...');
                             
-                            // Click "לשקלול מחיר" to scroll to the form
-                            clickScrollToFormButton();
-                            
-                            // Then fill the form after a short delay
+                            // Fill form immediately (no scroll yet)
                             setTimeout(() => {
                                 fillFormFields(result.pendingYad2Fill.vehicleData);
-                            }, 300);
+                            }, 1000);
                         }, 1000);
                     } else {
                         console.log('⚠️ No vehicle data found in storage');
@@ -636,18 +634,9 @@ console.log('🚀🚀🚀 YAD2-CONTENT.JS VERSION 1.0.2 LOADED 🚀🚀🚀');
                 console.log('✅ On specific model page - filling form directly');
                 console.log(`⏳ Waiting ${initialWait}ms for user to see vehicle details...`);
                 
-                // Wait, then do ONE scroll to show the weighted price area
+                // Wait, then fill form (scroll happens after calculation)
                 setTimeout(() => {
-                    console.log('📜 Scrolling to weighted price section...');
-                    window.scrollBy({
-                        top: 2800,  // ADJUST THIS: scroll down to show form + weighted price result
-                        behavior: 'smooth'
-                    });
-                    
-                    // Fill form after scroll
-                    setTimeout(() => {
-                        fillFormFields(vehicleData);
-                    }, 500); // Small delay after scroll
+                    fillFormFields(vehicleData);
                 }, initialWait);
                 return;
             }
@@ -718,6 +707,15 @@ console.log('🚀🚀🚀 YAD2-CONTENT.JS VERSION 1.0.2 LOADED 🚀🚀🚀');
                     // Wait for results to load, then extract price
                     console.log('⏳ Waiting for calculation results...');
                     
+                    // Scroll to show weighted price after calculation is triggered
+                    setTimeout(() => {
+                        console.log('📜 Scrolling to show weighted price result...');
+                        window.scrollBy({
+                            top: 2800,  // ADJUST: scroll to weighted price area
+                            behavior: 'smooth'
+                        });
+                    }, 800); // ADJUST: delay before scroll (800ms after clicking שקלול מחיר)
+                    
                     // Start observing for price results (this will trigger as soon as data appears)
                     watchForPriceResults();
                     
@@ -732,7 +730,7 @@ console.log('🚀🚀🚀 YAD2-CONTENT.JS VERSION 1.0.2 LOADED 🚀🚀🚀');
                         extractPriceData();
                     }, 4000);
                 }
-            }, 1000);
+            }, 1000); // ADJUST: delay before clicking שקלול מחיר (1000ms after form fill)
             
         } catch (error) {
             console.error('Error filling form fields:', error);
