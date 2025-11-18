@@ -1,5 +1,4 @@
 // Content script for Yad2 price calculator
-console.log('🚀🚀🚀 YAD2-CONTENT.JS VERSION 1.0.2 LOADED 🚀🚀🚀');
 (function() {
     'use strict';
 

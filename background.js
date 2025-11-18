@@ -2,64 +2,47 @@
 (function() {
     'use strict';
 
-    console.log('=== BACKGROUND SCRIPT STARTING ===');
-    console.log('Background script is running!');
-    console.log('Background service worker initialized successfully');
-
     // Cache for price data
     const priceCache = new Map();
     const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
     // Listen for messages from content scripts
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        console.log('Background received message:', request.type, request.data);
-        
         if (request.type === 'PING') {
-            console.log('PING received, responding...');
             sendResponse({ status: 'alive' });
             return true;
         } else if (request.type === 'VEHICLE_DATA_EXTRACTED') {
-            console.log('Handling VEHICLE_DATA_EXTRACTED message');
-            console.log('Message sent successfully to background');
             handleVehicleData(request.data).then(() => {
-                console.log('Vehicle data processing completed');
                 sendResponse({ success: true });
             }).catch(error => {
                 console.error('Error processing vehicle data:', error);
                 sendResponse({ error: error.message });
             });
-            return true; // Keep message channel open for async response
+            return true;
         } else if (request.type === 'YAD2_PRICE_DATA') {
-            console.log('Handling YAD2_PRICE_DATA message');
             handleYad2PriceData(request.data);
             sendResponse({ success: true, message: 'Price data received and stored' });
             return true;
         } else if (request.type === 'GET_PRICE') {
-            console.log('Handling GET_PRICE message');
             getVehiclePrice(request.data).then(price => {
                 sendResponse({ price });
             }).catch(error => {
                 sendResponse({ error: error.message });
             });
-            return true; // Keep message channel open for async response
+            return true;
         } else if (request.type === 'OPEN_YAD2_CALCULATOR') {
-            console.log('Handling OPEN_YAD2_CALCULATOR message (user clicked button)');
             openYad2Calculator(request.data).then(() => {
                 sendResponse({ success: true });
             }).catch(error => {
                 console.error('Error opening Yad2 calculator:', error);
                 sendResponse({ error: error.message });
             });
-            return true; // Keep message channel open for async response
+            return true;
         }
     });
 
     // Handle Yad2 price data from content script
     function handleYad2PriceData(priceData) {
-        console.log('=== REAL YAD2 PRICE DATA RECEIVED ===');
-        console.log('Yad2 price data:', priceData);
-        
-        // Add metadata to show this is real Yad2 data
         const enrichedPriceData = {
             ...priceData,
             source: 'yad2_real',
@@ -67,21 +50,10 @@
             isRealYad2Data: true
         };
         
-        // Store the price data for popup access (this overrides any estimation)
         chrome.storage.local.set({
             currentVehiclePrice: enrichedPriceData,
             priceTimestamp: Date.now(),
             priceError: null
-        });
-        
-        console.log('✅ Real Yad2 price stored successfully!');
-        
-        // Optional: Close the Yad2 tab after extracting data
-        chrome.tabs.query({ url: 'https://www.yad2.co.il/price-list/sub-model/*' }, (tabs) => {
-            if (tabs.length > 0) {
-                console.log('Consider closing Yad2 tab:', tabs[0].id);
-                // Uncomment to auto-close: chrome.tabs.remove(tabs[0].id);
-            }
         });
     }
 
@@ -92,31 +64,21 @@
 
     // Handle extracted vehicle data
     async function handleVehicleData(vehicleData) {
-        console.log('Vehicle data extracted:', vehicleData);
-        
         try {
-            // Check if this is a duplicate call
             const vehicleKey = `${vehicleData.vehicleNumber || ''}-${vehicleData.manufacturer || ''}-${vehicleData.model || ''}-${vehicleData.year || ''}`;
             const now = Date.now();
             
             if (lastProcessedVehicle === vehicleKey && (now - lastProcessedTime) < VEHICLE_PROCESS_COOLDOWN) {
-                console.log('🚫 Duplicate vehicle data received, skipping...');
                 return;
             }
             
             lastProcessedVehicle = vehicleKey;
             lastProcessedTime = now;
             
-            // Store in cache for popup access
             await chrome.storage.local.set({
                 currentVehicleData: vehicleData,
                 timestamp: Date.now()
             });
-
-            // Just store the vehicle data - don't auto-open Yad2
-            // The popup will trigger Yad2 opening when user clicks the button
-            console.log('✅ Vehicle data stored successfully');
-            console.log('Waiting for user to click extension button to open Yad2...');
         } catch (error) {
             console.error('Error in handleVehicleData:', error);
             throw error;
@@ -1155,15 +1117,9 @@
     // Open Yad2 calculator with vehicle parameters
     async function openYad2Calculator(vehicleData) {
         try {
-            console.log('=== OPENING YAD2 CALCULATOR REQUEST ===');
-            console.log('Vehicle data:', vehicleData);
-            
             const currentVehicleKey = getVehicleKey(vehicleData);
-            console.log('Vehicle key:', currentVehicleKey);
             
-            // Check if we're currently in the process of opening a tab
             if (yad2TabOpening) {
-                console.log('🚫 Already opening a Yad2 tab, skipping duplicate request...');
                 return;
             }
             
@@ -1366,13 +1322,13 @@
 
     // Keep service worker alive
     chrome.runtime.onStartup.addListener(() => {
-        console.log('Yad2 Vehicle Price Extension service worker started');
+        // Service worker started
     });
 
     // Ping to keep service worker alive
     setInterval(() => {
-        console.log('Service worker ping - keeping alive');
-    }, 30000); // Every 30 seconds
+        // Keep alive ping
+    }, 30000);
 
 })();
 
