@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Yad2 Vehicle Price Extension",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Displays Yad2 weighted prices for vehicles on Bidspirit pages",
   "icons": {
     "16": "icons/icon16.png",
@@ -10,8 +10,7 @@
   },
   "permissions": [
     "activeTab",
-    "storage",
-    "scripting"
+    "storage"
   ],
   "host_permissions": [
     "https://*.bidspirit.com/*",
