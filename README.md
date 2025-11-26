@@ -2,6 +2,8 @@
 
 A Chrome extension that automatically extracts vehicle data from Bidspirit auctions and Yad2 listings, then fetches accurate price estimates from Yad2's price calculator.
 
+**[📦 Install from Chrome Web Store](https://chromewebstore.google.com/detail/yad2-vehicle-price-extens/aknjmppcebgfncgcalipimbehdppphje)**
+
 ## ✨ Features
 
 ### **Bidspirit Integration**
@@ -23,6 +25,9 @@ A Chrome extension that automatically extracts vehicle data from Bidspirit aucti
 - Fallback to vehicle number search for models not in dictionary
 
 ## 🚀 Installation
+
+### Chrome Web Store (Recommended)
+**[Install from Chrome Web Store](https://chromewebstore.google.com/detail/yad2-vehicle-price-extens/aknjmppcebgfncgcalipimbehdppphje)** - One-click installation, automatic updates.
 
 ### Manual Installation
 1. Clone or download this repository
